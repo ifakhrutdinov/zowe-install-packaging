@@ -7,7 +7,13 @@ XMEM_PARM=ZISPRM00
 XMEM_PARMLIB=${USER}.PARMLIB
 XMEM_JCL=ZISSRV01
 XMEM_PROCLIB=${USER}.PROCLIB
+XMEM_KEY=4
+XMEM_STC_USER=ZISSTC
+XMEM_STC_USER_UID=11111
+XMEM_STC_PREFIX=ZIS
+XMEM_PROFILE=ZIS.SERVER01.RES01
 
+# MVS install steps
 
 datasetExists() {
   dsn=$1
@@ -104,7 +110,7 @@ if [[ "${module}" -eq "${XMEM_MODULE}" ]]; then
     echo "error: module ${XMEM_MODULE} must be non-swappable"
     exit 8
   fi
-  if [[ "${key}" -ne "4" ]]; then
+  if [[ "${key}" -ne "${XMEM_KEY}" ]]; then
     echo "error: module ${XMEM_MODULE} must run in key 4"
     exit 8
   fi
@@ -113,5 +119,66 @@ else
   exit 8
 fi
 
+# Security install steps
 
+function checkJob {
+jobname=$1
+tsocmd status ${jobname} 2>/dev/null | grep "JOB ${jobname}(S.*[0-9]*) EXECUTING" > /dev/null
+if [[ $? -eq 0 ]]
+then
+  true 
+else
+  false
+fi
+}
+
+safFound=false
+for saf in RACF ACF2 TSS
+do
+  if checkJob $saf; then
+    safFound=true
+    break
+  fi
+done
+
+if [[ $safFound -ne true ]]
+then
+  echo "error: SAF has not been found"
+  exit 8
+fi
+
+echo "info: SAF=${saf}"
+
+sh ../scripts/zowe-xmem-check-user.sh ${saf} ${XMEM_STC_USER}
+rc=$?
+if [[ $rc -eq 1 ]]; then
+  sh ../scripts/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}
+  if [[ $? -ne 0 ]]; then
+    exit 8
+  fi
+elif [[ $rc -ne 0 ]]; then
+  exit 8
+fi
+
+sh ../scripts/zowe-xmem-check-stc-profile.sh ${saf} ${XMEM_STC_PREFIX}
+rc=$?
+if [[ $rc -eq 1 ]]; then
+  sh ../scripts/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}
+  if [[ $? -ne 0 ]]; then
+    exit 8
+  fi
+elif [[ $rc -ne 0 ]]; then
+  exit 8
+fi
+
+sh ../scripts/zowe-xmem-check-profile.sh ${saf} FACILITY ${XMEM_PROFILE}
+rc=$?
+if [[ $rc -eq 1 ]]; then
+  sh ../scripts/zowe-xmem-define-xmem-profile.sh ${saf} ${XMEM_PROFILE}
+  if [[ $? -ne 0 ]]; then
+    exit 8
+  fi
+elif [[ $rc -ne 0 ]]; then
+  exit 8
+fi
 
