@@ -294,7 +294,7 @@ if $xmemProfileOk ; then
 elif ! $safOk ; then
   echo "Security profile - N/A"
 else
-  echo "Securoty profile - Error"
+  echo "Security profile - Error"
   echo "Please correct errors and re-run the following scripts:"
   echo $xmemProfileCmd1
   echo $xmemProfileCmd2
@@ -314,4 +314,7 @@ fi
 echo "********************************************************************************"
 echo "********************************************************************************"
 echo "********************************************************************************"
+
+rm  ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp 1>/dev/null 2>/dev/null
+exit 0
 

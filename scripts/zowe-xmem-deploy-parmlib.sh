@@ -13,6 +13,8 @@ ZSS=$1
 parmlib=$2
 parm=$3
 
+rc=8
+
 sh $BASEDIR/zowe-xmem-dataset-exists.sh ${parmlib}
 if [[ $? -eq 0 ]]; then
   echo "Allocate ${parmlib}"
@@ -22,20 +24,28 @@ if [[ $? -eq 0 ]]; then
   then
     echo "Info:  dataset ${parmlib} has been successfully allocated"
     sleep 1 # Looks like the system needs some time to catalog the dataset
+    rc=0
   else
     echo "Error:  dataset ${parmlib} has not been allocated"
     cat /tmp/cmd.out /tmp/cmd.err
-    exit 8
+    rc=8
+  fi
+else
+  rc=0
+fi
+
+if [[ "$rc" = 0 ]] ; then
+  echo "Copying parmlib member ${parm}"
+  if cp ${ZSS}/SAMPLIB/${parm} "//'${parmlib}'"
+  then
+    echo "Info:  PARMLIB member ${parm} has been successfully copied to dataset ${parmlib}"
+    rc=0
+  else
+    echo "Error:  PARMLIB member ${parm} has not been copied to dataset ${parmlib}"
+    rc=8
   fi
 fi
 
-echo "Copying parmlib member ${parm}"
-if cp ${ZSS}/SAMPLIB/${parm} "//'${parmlib}'"
-then
-  echo "Info:  PARMLIB member ${parm} has been successfully copied to dataset ${parmlib}"
-  exit 0
-else
-  echo "Error:  PARMLIB member ${parm} has not been copied to dataset ${parmlib}"
-  exit 8
-fi
+rm /tmp/cmd.out /tmp/cmd.err 1> /dev/null 2> /dev/null
+exit $rc
 

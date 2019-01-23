@@ -13,6 +13,8 @@ ZSS=$1
 loadlib=$2
 loadmodule=$3
 
+rc=8
+
 sh $BASEDIR/zowe-xmem-dataset-exists.sh ${loadlib}
 if [[ $? -ne 0 ]]; then
   echo "Check if dataset ${loadlib} is PDSE"
@@ -20,9 +22,10 @@ if [[ $? -ne 0 ]]; then
   if [[ ! -z "$dsntype" ]]
   then
     echo "Info:  dataset ${loadlib} is PDSE"
+    rc=0
   else
     echo "Error:  dataset ${loadlib} is not PDSE"
-    exit 8
+    rc=8
   fi
 else
   echo "Allocate ${loadlib}"
@@ -32,20 +35,26 @@ else
   then
     echo "Info:  dataset ${loadlib} has been successfully allocated"
     sleep 1 # Looks like the system needs some time to catalog the dataset
+    rc=0
   else
     echo "Error:  dataset ${loadlib} has not been allocated"
-    exit 8
     cat /tmp/cmd.out /tmp/cmd.err
+    rc=8
   fi
 fi
 
-echo "Copying load module ${loadmodule}"
-if cp ${ZSS}/LOADLIB/${loadmodule} "//'${loadlib}'"
-then
-  echo "Info:  module ${loadmodule} has been successfully copied to dataset ${loadlib}"
-  exit 0
-else
-  echo "Error:  module ${loadmodule} has not been copied to dataset ${loadlib}"
-  exit 8
+if [[ "$rc" = 0 ]] ; then
+  echo "Copying load module ${loadmodule}"
+  if cp ${ZSS}/LOADLIB/${loadmodule} "//'${loadlib}'"
+  then
+    echo "Info:  module ${loadmodule} has been successfully copied to dataset ${loadlib}"
+    rc=0
+  else
+    echo "Error:  module ${loadmodule} has not been copied to dataset ${loadlib}"
+    rc=8
+  fi
 fi
+
+rm /tmp/cmd.out /tmp/cmd.err 1> /dev/null 2> /dev/null
+exit $rc
 

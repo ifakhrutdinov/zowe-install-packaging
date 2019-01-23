@@ -13,6 +13,8 @@ saf=$1
 profile=$2
 user=$3
 
+rc=8
+
 echo "Grant user ${user} READ access to profile ${profile} in the FACILITY class (SAF=${saf})"
 
 case $saf in
@@ -24,29 +26,32 @@ RACF)
   then
     echo Error: PERMIT failed with the following errors
     cat /tmp/cmd.out /tmp/cmd.err
-    exit 8
+    rc=8
   else
     tsocmd "SETROPTS REFRESH RACLIST(FACILITY)" \
       1> /tmp/cmd.out 2> /tmp/cmd.err
     echo "Info:  access has been granted"
-    exit 0
+    rc=0
   fi
 ;;
 
 ACF2)
   echo "Warning:  ACF2 support has not been implemented," \
     "please manually grant user ${user} READ access to ${profile} in the FACILITY class"
-  exit 8
+  rc=8
 ;;
 
 TSS)
   echo "Warning:  TopSecret support has not been implemented," \
     "please manually grant user ${user} READ access to ${profile} in the FACILITY class"
-  exit 8
+  rc=8
 ;;
 
 *)
   echo "Error:  Unexpected SAF $saf"
-  exit 8
+  rc=8
 esac
+
+rm /tmp/cmd.out /tmp/cmd.err 1> /dev/null 2> /dev/null
+exit $rc
 
