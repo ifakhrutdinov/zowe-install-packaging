@@ -9,13 +9,17 @@
 # Copyright Contributors to the Zowe Project.
 
 BASEDIR=$(dirname "$0")
-saf=$1
-prefix=$2
-profile=$prefix"*.*"
+dsn=$1
 
-echo "Check STC profile ${profile} (SAF=${saf})"
+echo "Check if $dsn exists"
 
-sh $BASEDIR/zowe-xmem-check-profile.sh $saf STARTED $profile
-
-exit $?
+lastcc=`tsocmd "listcat entries('$dsn')" 2>/dev/null | sed -n "s/.*LASTCC=\([0-9]*\).*/\1/p"`
+if [[ -z "$lastcc" ]]
+then
+  echo "Info:  dataset $dsn exists"
+  exit 1
+else
+  echo "Info:  dataset $dsn doesn't exit"
+  exit 0
+fi
 

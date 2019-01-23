@@ -9,13 +9,15 @@
 # Copyright Contributors to the Zowe Project.
 
 BASEDIR=$(dirname "$0")
-saf=$1
-prefix=$2
-profile=$prefix"*.*"
+loadlib=$1
 
-echo "Check STC profile ${profile} (SAF=${saf})"
+echo "APF-authorize loadlib ${loadlib}"
 
-sh $BASEDIR/zowe-xmem-check-profile.sh $saf STARTED $profile
-
-exit $?
+if ../scripts/opercmd "SETPROG APF,ADD,DSNAME=${loadlib},SMS" | grep "CSV410I" 1>/dev/null; then
+  echo "Info:  dataset ${loadlib} has been added to APF list"
+  exit 0
+else
+  echo "Error:  dataset ${loadlib} has not been added to APF list"
+  exit 8
+fi
 

@@ -1,4 +1,14 @@
+#!/bin/sh
 
+# This program and the accompanying materials are
+# made available under the terms of the Eclipse Public License v2.0 which accompanies
+# this distribution, and is available at https://www.eclipse.org/legal/epl-v20.html
+#
+# SPDX-License-Identifier: EPL-2.0
+#
+# Copyright Contributors to the Zowe Project.
+
+BASEDIR=$(dirname "$0")
 saf=$1
 stcPrefix=$2
 stcUser=$3
@@ -18,7 +28,7 @@ RACF)
   else
     tsocmd "SETROPTS REFRESH RACLIST(STARTED)" \
       1> /tmp/cmd.out 2> /tmp/cmd.err
-    echo "Info:  RACF setup complete"
+    echo "Info:  STC profile has been defined"
     exit 0
   fi
   ;;
@@ -48,7 +58,7 @@ ACF2)
         cat /tmp/cmd.out /tmp/cmd.err
         exit 8
       else
-        echo "Info:  ACF2 setup complete"
+        echo "Info:  STC profile has been defined"
         exit 0
       fi
     fi
@@ -64,7 +74,7 @@ TSS)
     cat /tmp/cmd.out /tmp/cmd.err
     exit 8
   else
-    echo "Info:  Top Secret setup complete"
+    echo "Info:  STC profile has been defined"
     exit 0
   fi 
   ;;

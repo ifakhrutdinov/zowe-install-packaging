@@ -1,122 +1,79 @@
 #!/bin/sh
 
-ZSS=../../zss
-XMEM_MODULE=ZISSRV01
+# This program and the accompanying materials are
+# made available under the terms of the Eclipse Public License v2.0 which accompanies
+# this distribution, and is available at https://www.eclipse.org/legal/epl-v20.html
+# 
+# SPDX-License-Identifier: EPL-2.0
+# 
+# Copyright Contributors to the Zowe Project.
+
+BASEDIR=$(dirname "$0")
+
+ZSS=$BASEDIR/../../zss
+XMEM_ELEMENT_ID=ZIS
+XMEM_MODULE=${XMEM_ELEMENT_ID}SRV01
 XMEM_LOADLIB=${USER}.LOADLIB
-XMEM_PARM=ZISPRM00
 XMEM_PARMLIB=${USER}.PARMLIB
-XMEM_JCL=ZISSRV01
+XMEM_PARM=${XMEM_ELEMENT_ID}PRM00
+XMEM_JCL=${XMEM_ELEMENT_ID}SRV01
 XMEM_PROCLIB=${USER}.PROCLIB
 XMEM_KEY=4
-XMEM_STC_USER=ZISSTC
+XMEM_STC_USER=${XMEM_ELEMENT_ID}STC
 XMEM_STC_USER_UID=11111
-XMEM_STC_PREFIX=ZIS
-XMEM_PROFILE=ZIS.SERVER01.RES01
+XMEM_STC_PREFIX=${XMEM_ELEMENT_ID}
+XMEM_PROFILE=${XMEM_ELEMENT_ID}.SERVER01.RES01
+ZOWE_USER=SSUSER6
+
+loadlibOk=false
+apfOk=false
+parmlibOk=false
+proclibOk=false
+pptOk=false
+safOk=false
+stcUserOk=false
+stcProfileOk=false
+xmemProfileOk=false
+xmemProfileAccessOk=false
 
 # MVS install steps
 
-datasetExists() {
-  dsn=$1
-  echo "info: check if $dsn exists"
-  lastcc=`tsocmd "listcat entries('$dsn')" 2>/dev/null | sed -n "s/.*LASTCC=\([0-9]*\).*/\1/p"`
-  if [[ -z "$lastcc" ]]
-  then
-    echo "info: dataset $dsn exists"
-    true
-  else
-    echo "info: dataset $dsn doesn't exit"
-    false
-  fi
-}
-
-isPDSE=false
-if datasetExists ${XMEM_LOADLIB}; then
-  echo "info: check if dataset ${XMEM_LOADLIB} is PDSE"
-  dsntype=`tsocmd "listcat entries('${XMEM_LOADLIB}') all" 2>/dev/null | sed -n "s/.*DSNTYPE[-]*\([^ ]*\).*/\1/p"`
-  if [[ ! -z "$dsntype" ]]
-  then
-    echo "info: dataset ${XMEM_LOADLIB} is PDSE"
-  isPDSE=true
-  else
-    echo "error: dataset ${XMEM_LOADLIB} is not PDSE"
-    isPDSE=false
-  fi
-else
-  echo "info: allocating ${XMEM_LOADLIB}"
-  allocRc=`tsocmd "allocate da('${XMEM_LOADLIB}') dsntype(library) dsorg(po) recfm(u) blksize(6144) space(10,2) tracks new " 2>/dev/null | sed -n "s/.*RETURN CODE IS \([0-9]*\).*/\1/p"`
-  if [[ -z "$allocRc" ]]
-  then
-    echo "info: dataset ${XMEM_LOADLIB} has been successfully allocated"
-  else
-    echo "error: dataset ${XMEM_LOADLIB} has not been allocated"
-  exit 8
-  fi
-fi
-
-if ../scripts/opercmd "SETPROG APF,ADD,DSNAME=${XMEM_LOADLIB},SMS" | grep "CSV410I" 1>/dev/null; then
-  echo "info: dataset ${XMEM_LOADLIB} has been added to APF list"
-else
-  echo "error: dataset ${XMEM_LOADLIB} has not been added to APF list"
-  exit 8
-fi
-
-echo "info: copying load module ${XMEM_MODULE}"
-if cp ${ZSS}/LOADLIB/${XMEM_MODULE} "//'${XMEM_LOADLIB}'" 2>/dev/null
-then
-  echo "info: module ${XMEM_MODULE} has been successfully copied to dataset ${XMEM_LOADLIB}"
-else
-  echo "error: module ${XMEM_MODULE} has not been copied to dataset ${XMEM_LOADLIB}"
-  exit 8
-fi
-
-if datasetExists ${XMEM_PARMLIB}; then
-  echo "info: copying PARMLIB member ${XMEM_PARM}"
-  if cp ${ZSS}/SAMPLIB/${XMEM_PARM} "//'${XMEM_PARMLIB}'" 2>/dev/null
-  then
-    echo "info: PARMLIB member ${XMEM_PARM} has been successfully copied to dataset ${XMEM_PARMLIB}"
-  else
-    echo "error: PARMLIB member ${XMEM_PARM} has not been copied to dataset ${XMEM_PARMLIB}"
-    exit 8
-  fi
-else
-  echo "error: PARMLIB ${XMEM_PARMLIB} doesn't exist"
-  exit 8
-fi
-
+# 0. Preapre STC JCL
 cp ${ZSS}/SAMPLIB/${XMEM_JCL} ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
-sed -i "s/ZIS.SZISLOAD/${XMEM_LOADLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
-if datasetExists ${XMEM_PROCLIB}; then
-  echo "info: copying PROCLIB member ${XMEM_JCL}"
-  if cp ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp "//'${XMEM_PROCLIB}(${XMEM_JCL})'" 2>/dev/null
-  then
-    echo "info: PROCLIB member ${XMEM_JCL} has been successfully copied to dataset ${XMEM_PROCLIB}"
-  else
-    echo "error: PROCLIB member ${XMEM_JCL} has not been copied to dataset ${XMEM_PROCLIB}"
-    exit 8
+sed -i "s/${XMEM_ELEMENT_ID}.S${XMEM_ELEMENT_ID}LOAD/${XMEM_LOADLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
+sed -i "s/${XMEM_ELEMENT_ID}.S${XMEM_ELEMENT_ID}PARM/${XMEM_PARMLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
+
+# 1. Deploy loadlib
+sh $BASEDIR/zowe-xmem-deploy-loadmodule.sh ${ZSS} ${XMEM_LOADLIB} ${XMEM_MODULE}
+if [[ $? -eq 0 ]]
+then
+  # 2. APF-authorize loadlib
+  loadlibOk=true
+  sh $BASEDIR/zowe-xmem-apf.sh ${XMEM_LOADLIB}
+  if [[ $? -eq 0 ]]; then
+    apfOk=true
   fi
-else
-  echo "error: PROCLIB ${XMEM_PROCLIB} doesn't exist"
-  exit 8
 fi
 
-echo "info: obtaining PPT information"
-ppt=`../scripts/opercmd "d ppt,name=${XMEM_MODULE}" | grep "${XMEM_MODULE}  ."`
-module=$(echo $ppt | cut -f1 -d ' ')
-isNonSwappable=$(echo $ppt | cut -f3 -d ' ')
-key=$(echo $ppt | cut -f8 -d ' ')
-if [[ "${module}" -eq "${XMEM_MODULE}" ]]; then
-  echo "info: module ${XMEM_MODULE} has a PPT-entry with NS=${isNonSwappable}, key=${key}"
-  if [[ "${isNonSwappable}" -ne "Y" ]]; then
-    echo "error: module ${XMEM_MODULE} must be non-swappable"
-    exit 8
-  fi
-  if [[ "${key}" -ne "${XMEM_KEY}" ]]; then
-    echo "error: module ${XMEM_MODULE} must run in key 4"
-    exit 8
-  fi
-else
-  echo "error: PPT-entry has not been found for module ${XMEM_MODULE}"
-  exit 8
+# 3. Deploy parmlib
+sh $BASEDIR/zowe-xmem-deploy-parmlib.sh ${ZSS} ${XMEM_PARMLIB} ${XMEM_PARM}
+if [[ $? -eq 0 ]]
+  parmlibOk=true
+then
+fi
+
+# 4. Deploy PROCLIB
+sh $BASEDIR/zowe-xmem-deploy-proclib.sh ${ZSS} ${XMEM_PROCLIB} ${XMEM_JCL}
+if [[ $? -eq 0 ]]
+  proclibOk=true
+then
+fi
+
+# 5. PPT-entry
+sh $BASEDIR/zowe-xmem-ppt.sh ${XMEM_MODULE} ${XMEM_KEY}
+if [[ $? -eq 0 ]]
+  pptOk=true
+then
 fi
 
 # Security install steps
@@ -132,53 +89,139 @@ else
 fi
 }
 
-safFound=false
+# 6. Get SAF
+echo "Get SAF"
 for saf in RACF ACF2 TSS
 do
   if checkJob $saf; then
-    safFound=true
+    echo "Info:  SAF=${saf}"
+    safOk=true
     break
+  else
+    echo "Error:  SAF has not been found"
   fi
 done
 
-if [[ $safFound -ne true ]]
+if [[ $safOk -eq true ]]
 then
-  echo "error: SAF has not been found"
-  exit 8
-fi
 
-echo "info: SAF=${saf}"
-
-sh ../scripts/zowe-xmem-check-user.sh ${saf} ${XMEM_STC_USER}
-rc=$?
-if [[ $rc -eq 1 ]]; then
-  sh ../scripts/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}
-  if [[ $? -ne 0 ]]; then
-    exit 8
+  # 7. Handle STC user
+  sh $BASEDIR/zowe-xmem-check-user.sh ${saf} ${XMEM_STC_USER}
+  rc=$?
+  if [[ $rc -eq 1 ]]; then
+    sh $BASEDIR/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}
+    if [[ $? -eq 0 ]]; then
+      stcUserOk=true
+    fi
+  elif [[ $rc -eq 0 ]]; then
+    stcUserOk=true
   fi
-elif [[ $rc -ne 0 ]]; then
-  exit 8
+
+  # 8. Handle STC profile
+  sh $BASEDIR/zowe-xmem-check-stc-profile.sh ${saf} ${XMEM_STC_PREFIX}
+  rc=$?
+  if [[ $rc -eq 1 ]]; then
+    sh $BASEDIR/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}
+    if [[ $? -eq 0 ]]; then
+      stcProfileOk=true
+    fi
+  elif [[ $rc -eq 0 ]]; then
+    stcProfileOk=true
+  fi
+
+  # 9. Handle security profile
+  sh $BASEDIR/zowe-xmem-check-profile.sh ${saf} FACILITY ${XMEM_PROFILE} ${ZOWE_USER}
+  rc=$?
+  if [[ $rc -eq 1 ]]; then
+    sh $BASEDIR/zowe-xmem-define-xmem-profile.sh ${saf} ${XMEM_PROFILE}
+    if [[ $? -eq 0 ]]; then
+      xmemProfileOk=true
+    fi
+  elif [[ $rc -eq 0 ]]; then
+    xmemProfileOk=true
+  fi
+
+  # 10. Check access
+  if [[ "$xmemProfileOk" = "true" ]]; then
+    sh $BASEDIR/zowe-xmem-check-access.sh ${saf} FACILITY ${XMEM_PROFILE} ${ZOWE_USER}
+    rc=$?
+    if [[ $rc -eq 1 ]]; then
+      sh $BASEDIR/zowe-xmem-permit.sh ${saf} ${XMEM_PROFILE} ${ZOWE_USER}
+      if [[ $? -eq 0 ]]; then
+        xmemProfileAccessOk=true
+      fi
+    elif [[ $rc -eq 0 ]]; then
+      xmemProfileAccessOk=true
+    fi
+  fi
+
 fi
 
-sh ../scripts/zowe-xmem-check-stc-profile.sh ${saf} ${XMEM_STC_PREFIX}
-rc=$?
-if [[ $rc -eq 1 ]]; then
-  sh ../scripts/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}
-  if [[ $? -ne 0 ]]; then
-    exit 8
-  fi
-elif [[ $rc -ne 0 ]]; then
-  exit 8
+echo "****************************************"
+echo "**************** Report ****************"
+echo "****************************************"
+
+if $loadlibOk ; then
+  echo "LOADLIB - Ok"
+else
+  echo "LOADLIB - Error"
 fi
 
-sh ../scripts/zowe-xmem-check-profile.sh ${saf} FACILITY ${XMEM_PROFILE}
-rc=$?
-if [[ $rc -eq 1 ]]; then
-  sh ../scripts/zowe-xmem-define-xmem-profile.sh ${saf} ${XMEM_PROFILE}
-  if [[ $? -ne 0 ]]; then
-    exit 8
-  fi
-elif [[ $rc -ne 0 ]]; then
-  exit 8
+if $apfOk ; then
+  echo "APF-auth - Ok"
+else
+  echo "APF-auth - Error"
 fi
+
+if $parmlibOk ; then
+  echo "PARMLIB - Ok"
+else
+  echo "PARMLIB - Error"
+fi
+
+if $proclibOk ; then
+  echo "PROCLIB - Ok"
+else
+  echo "PROCLIB - Error"
+fi
+
+if $pptOk ; then
+  echo "PPT-entry - Ok"
+else
+  echo "PPT-entry - Error"
+fi
+
+if $safOk ; then
+  echo "SAF type - Ok"
+else
+  echo "SAF type - Error"
+fi
+
+if $stcUserOk ; then
+  echo "STC user - Ok"
+else
+  echo "STC user - Error"
+fi
+
+if $stcProfileOk ; then
+  echo "STC profile - Ok"
+else
+  echo "STC profile - Error"
+fi
+
+if $xmemProfileOk ; then
+  echo "Security profile - Ok"
+else
+  echo "Securoty profile - Error"
+fi
+
+if $xmemProfileAccessOk ; then
+  echo "Security profile access - Ok"
+else
+  echo "Security profile access - Error"
+fi
+
+echo "****************************************"
+echo "****************************************"
+echo "****************************************"
 

@@ -11,36 +11,37 @@
 BASEDIR=$(dirname "$0")
 saf=$1
 profile=$2
+user=$3
 
-echo "Define cross-memory server profile ${profile} (SAF=${saf})"
+echo "Grant user ${user} READ access to profile ${profile} in the FACILITY class (SAF=${saf})"
 
 case $saf in
 
 RACF) 
-  tsocmd "RDEFINE FACILITY ${profile} UACC(NONE)" \
+  tsocmd "PERMIT ${profile} CLASS(FACILITY) ID(${user}) ACCESS(READ)" \
     1> /tmp/cmd.out 2> /tmp/cmd.err 
   if [[ $? -ne 0 ]]
   then
-    echo Error:  RDEFINE failed with the following errors
+    echo Error: PERMIT failed with the following errors
     cat /tmp/cmd.out /tmp/cmd.err
     exit 8
   else
     tsocmd "SETROPTS REFRESH RACLIST(FACILITY)" \
       1> /tmp/cmd.out 2> /tmp/cmd.err
-    echo "Info:  profile has been defined"
+    echo "Info:  access has been granted"
     exit 0
   fi
 ;;
 
 ACF2)
   echo "Warning:  ACF2 support has not been implemented," \
-    "please manually create ${profile} in the FACILITY class with UACC(NONE)"
+    "please manually grant user ${user} READ access to ${profile} in the FACILITY class"
   exit 8
 ;;
 
 TSS)
   echo "Warning:  TopSecret support has not been implemented," \
-    "please manually create ${profile} in the FACILITY class with UACC(NONE)"
+    "please manually grant user ${user} READ access to ${profile} in the FACILITY class"
   exit 8
 ;;
 
