@@ -19,6 +19,7 @@ XMEM_PARM=${XMEM_ELEMENT_ID}PRM00
 XMEM_JCL=${XMEM_ELEMENT_ID}SRV01
 XMEM_PROCLIB=${USER}.PROCLIB
 XMEM_KEY=4
+XMEM_SCHED=${XMEM_ELEMENT_ID}SCHED
 XMEM_STC_USER=${XMEM_ELEMENT_ID}STC
 XMEM_STC_USER_UID=11111
 XMEM_STC_PREFIX=${XMEM_ELEMENT_ID}
@@ -41,7 +42,7 @@ xmemProfileAccessOk=false
 # 0. Preapre STC JCL
 cp ${ZSS}/SAMPLIB/${XMEM_JCL} ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
 sed -i "s/${XMEM_ELEMENT_ID}.S${XMEM_ELEMENT_ID}LOAD/${XMEM_LOADLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
-sed -i "s/${XMEM_ELEMENT_ID}.S${XMEM_ELEMENT_ID}PARM/${XMEM_PARMLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
+sed -i "s/${XMEM_ELEMENT_ID}.S${XMEM_ELEMENT_ID}SAMP/${XMEM_PARMLIB}/g" ${ZSS}/SAMPLIB/${XMEM_JCL}.tmp
 
 # 1. Deploy loadlib
 echo
@@ -70,8 +71,8 @@ echo "************************ Install step 'PARMLIB' start ********************
 parmlibCmd1="sh $BASEDIR/zowe-xmem-deploy-parmlib.sh ${ZSS} ${XMEM_PARMLIB} ${XMEM_PARM}"
 $parmlibCmd1
 if [[ $? -eq 0 ]]
-  parmlibOk=true
 then
+  parmlibOk=true
 fi
 echo "************************ Install step 'PARMLIB' end ****************************"
 
@@ -79,11 +80,11 @@ echo "************************ Install step 'PARMLIB' end **********************
 # 4. Deploy PROCLIB
 echo
 echo "************************ Install step 'PROCLIB' start **************************"
-proclibCmd1="sh $BASEDIR/zowe-xmem-deploy-proclib.sh ${ZSS} ${XMEM_PROCLIB} ${XMEM_JCL}"
+proclibCmd1="sh $BASEDIR/zowe-xmem-deploy-proclib.sh ${ZSS} ${XMEM_PROCLIB} ${XMEM_JCL}.tmp ${XMEM_JCL}"
 $proclibCmd1
 if [[ $? -eq 0 ]]
-  proclibOk=true
 then
+  proclibOk=true
 fi
 echo "************************ Install step 'PROCLIB' end ****************************"
 
@@ -94,8 +95,8 @@ echo "************************ Install step 'PPT-entry' start ******************
 pptCmd1="sh $BASEDIR/zowe-xmem-ppt.sh ${XMEM_MODULE} ${XMEM_KEY}"
 $pptCmd1
 if [[ $? -eq 0 ]]
-  pptOk=true
 then
+  pptOk=true
 fi
 echo "************************ Install step 'PPT-entry' end **************************"
 
@@ -254,7 +255,9 @@ if $pptOk ; then
   echo "PPT-entry - Ok"
 else
   echo "PPT-entry - Error"
-  echo "Please correct errors and re-run the following scripts:"
+  echo "Please add the provided PPT entry (zss/samplib/${XMEM_SCHED}) to your system PARMLIB"
+  echo "and update the configuration using 'SET SCH=xx' operator command"
+  echo "Re-run the following scripts to validate the changes:"
   echo $pptCmd1
 fi
 

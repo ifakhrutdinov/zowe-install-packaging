@@ -11,7 +11,8 @@
 BASEDIR=$(dirname "$0")
 ZSS=$1
 proclib=$2
-jcl=$3
+jclfile=$3
+member=$4
 
 sh $BASEDIR/zowe-xmem-dataset-exists.sh ${proclib}
 if [[ $? -eq 0 ]]; then
@@ -19,13 +20,13 @@ if [[ $? -eq 0 ]]; then
   exit 8
 fi
 
-echo "Copy PROCLIB member ${jcl} to ${proclib}"
-if cp ${ZSS}/SAMPLIB/${jcl} "//'${proclib}'" 2>/dev/null
+echo "Copy PROCLIB member ${member} to ${proclib}"
+if cp ${ZSS}/SAMPLIB/${jclfile} "//'${proclib}(${member})'" 
 then
-  echo "Info:  PROCLIB member ${jcl} has been successfully copied to dataset ${proclib}"
+  echo "Info:  PROCLIB member ${member} has been successfully copied to dataset ${proclib}"
   exit 0
 else
-  echo "Error:  PROCLIB member ${jcl} has not been copied to dataset ${proclib}"
+  echo "Error:  PROCLIB member ${member} has not been copied to dataset ${proclib}"
   exit 8
 fi
 
