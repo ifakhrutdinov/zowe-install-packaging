@@ -13,7 +13,7 @@ loadmodule=$1
 xmemKey=$2
 
 echo "Obtain PPT information"
-ppt=`../scripts/opercmd "d ppt,name=${loadmodule}" | grep "${loadmodule}  ."`
+ppt=`${BASEDIR}/opercmd "d ppt,name=${loadmodule}" | grep "${loadmodule}  ."`
 module=$(echo $ppt | cut -f1 -d ' ')
 isNonSwappable=$(echo $ppt | cut -f3 -d ' ')
 key=$(echo $ppt | cut -f8 -d ' ')
