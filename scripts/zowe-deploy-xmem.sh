@@ -51,19 +51,23 @@ loadlibCmd1="sh $BASEDIR/zowe-xmem-deploy-loadmodule.sh ${ZSS} ${XMEM_LOADLIB} $
 $loadlibCmd1
 if [[ $? -eq 0 ]]
 then
-  # 2. APF-authorize loadlib
-  echo
-  echo "************************ Install step 'APF-auth' start *************************"
   loadlibOk=true
-  apfCmd1="sh $BASEDIR/zowe-xmem-apf.sh ${XMEM_LOADLIB}"
+fi
+echo "************************ Install step 'LOADLIB' end ****************************"
+
+# 2. APF-authorize loadlib
+echo
+echo "************************ Install step 'APF-auth' start *************************"
+apfCmd1="sh $BASEDIR/zowe-xmem-apf.sh ${XMEM_LOADLIB}"
+if $loadlibOk ; then
   $apfCmd1
   if [[ $? -eq 0 ]]; then
     apfOk=true
   fi
-  echo "************************ Install step 'APF-auth' end ***************************"
+else
+  echo "Error: skip this step due to previous errors"
 fi
-echo "************************ Install step 'LOADLIB' end ****************************"
-
+echo "************************ Install step 'APF-auth' end ***************************"
 
 # 3. Deploy parmlib
 echo
@@ -129,11 +133,10 @@ do
     break
   fi
 done
-echo "************************ Install step 'SAF-type' end ***************************"
-
 if ! $safOk ; then
   echo "Error:  SAF has not been found"
 fi
+echo "************************ Install step 'SAF-type' end ***************************"
 
 if $safOk ; then
 
@@ -142,10 +145,10 @@ if $safOk ; then
   echo
   echo "************************ Install step 'STC user' start *************************"
   stcUserCmd1="sh $BASEDIR/zowe-xmem-check-user.sh ${saf} ${XMEM_STC_USER}"
+  stcUserCmd2="sh $BASEDIR/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}"
   $stcUserCmd1
   rc=$?
   if [[ $rc -eq 1 ]]; then
-    stcUserCmd2="sh $BASEDIR/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}"
     $stcUserCmd2
     if [[ $? -eq 0 ]]; then
       stcUserOk=true
@@ -160,10 +163,10 @@ if $safOk ; then
   echo
   echo "************************ Install step 'STC profile' start **********************"
   stcProfileCmd1="sh $BASEDIR/zowe-xmem-check-stc-profile.sh ${saf} ${XMEM_STC_PREFIX}"
+  stcProfileCmd2="sh $BASEDIR/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}"
   $stcProfileCmd1
   rc=$?
   if [[ $rc -eq 1 ]]; then
-    stcProfileCmd2="sh $BASEDIR/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}"
     $stcProfileCmd2
     if [[ $? -eq 0 ]]; then
       stcProfileOk=true
@@ -178,10 +181,10 @@ if $safOk ; then
   echo
   echo "************************ Install step 'Security profile' start *****************"
   xmemProfileCmd1="sh $BASEDIR/zowe-xmem-check-profile.sh ${saf} FACILITY ${XMEM_PROFILE} ${ZOWE_USER}"
+  xmemProfileCmd2="sh $BASEDIR/zowe-xmem-define-xmem-profile.sh ${saf} ${XMEM_PROFILE}"
   $xmemProfileCmd1
   rc=$?
   if [[ $rc -eq 1 ]]; then
-    xmemProfileCmd2="sh $BASEDIR/zowe-xmem-define-xmem-profile.sh ${saf} ${XMEM_PROFILE}"
     $xmemProfileCmd2
     if [[ $? -eq 0 ]]; then
       xmemProfileOk=true
@@ -195,12 +198,12 @@ if $safOk ; then
   # 10. Check access
   echo
   echo "************************ Install step 'Security profile access' start **********"
+  xmemAccessCmd1="sh $BASEDIR/zowe-xmem-check-access.sh ${saf} FACILITY ${XMEM_PROFILE} ${ZOWE_USER}"
+  xmemAccessCmd2="sh $BASEDIR/zowe-xmem-permit.sh ${saf} ${XMEM_PROFILE} ${ZOWE_USER}"
   if [[ "$xmemProfileOk" = "true" ]]; then
-    xmemAccessCmd1="sh $BASEDIR/zowe-xmem-check-access.sh ${saf} FACILITY ${XMEM_PROFILE} ${ZOWE_USER}"
     $xmemAccessCmd1
     rc=$?
     if [[ $rc -eq 1 ]]; then
-      xmemAccessCmd2="sh $BASEDIR/zowe-xmem-permit.sh ${saf} ${XMEM_PROFILE} ${ZOWE_USER}"
       $xmemAccessCmd2
       if [[ $? -eq 0 ]]; then
         xmemProfileAccessOk=true
@@ -211,7 +214,9 @@ if $safOk ; then
   fi
   echo "************************ Install step 'Security profile access' end ************"
 
-
+else
+  echo
+  echo "Error: skip the security installation steps due to previous errors"
 fi
 
 echo
@@ -219,6 +224,7 @@ echo "**************************************************************************
 echo "************************************ Report ************************************"
 echo "********************************************************************************"
 
+echo
 if $loadlibOk ; then
   echo "LOADLIB - Ok"
 else
@@ -227,6 +233,7 @@ else
   echo $loadlibCmd1
 fi
 
+echo
 if $apfOk ; then
   echo "APF-auth - Ok"
 else
@@ -235,6 +242,7 @@ else
   echo $apfCmd1
 fi
 
+echo
 if $parmlibOk ; then
   echo "PARMLIB - Ok"
 else
@@ -243,6 +251,7 @@ else
   echo $parmlibCmd1
 fi
 
+echo
 if $proclibOk ; then
   echo "PROCLIB - Ok"
 else
@@ -251,6 +260,7 @@ else
   echo $proclibCmd1
 fi
 
+echo
 if $pptOk ; then
   echo "PPT-entry - Ok"
 else
@@ -261,12 +271,14 @@ else
   echo $pptCmd1
 fi
 
+echo
 if $safOk ; then
   echo "SAF type - Ok"
 else
   echo "SAF type - Error"
 fi
 
+echo
 if $stcUserOk ; then
   echo "STC user - Ok"
 elif ! $safOk ; then
@@ -278,6 +290,7 @@ else
   echo $stcUserCmd2
 fi
 
+echo
 if $stcProfileOk ; then
   echo "STC profile - Ok"
 elif ! $safOk ; then
@@ -289,6 +302,7 @@ else
   echo $stcProfileCmd2
 fi
 
+echo
 if $xmemProfileOk ; then
   echo "Security profile - Ok"
 elif ! $safOk ; then
@@ -300,6 +314,7 @@ else
   echo $xmemProfileCmd2
 fi
 
+echo
 if $xmemProfileAccessOk ; then
   echo "Security profile access - Ok"
 elif ! $safOk ; then
@@ -311,6 +326,7 @@ else
   echo $xmemAccessCmd2
 fi
 
+echo
 echo "********************************************************************************"
 echo "********************************************************************************"
 echo "********************************************************************************"
