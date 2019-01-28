@@ -23,6 +23,7 @@ XMEM_SCHED=${XMEM_ELEMENT_ID}ISCH
 XMEM_STC_USER=${XMEM_ELEMENT_ID}ISTC
 XMEM_STC_USER_UID=11111
 XMEM_STC_PREFIX=${XMEM_ELEMENT_ID}IS
+XMEM_STC_GROUP=STCGROUP
 XMEM_PROFILE=${XMEM_ELEMENT_ID}.IS
 ZOWE_USER=${USER}
 
@@ -145,7 +146,7 @@ if $safOk ; then
   echo
   echo "************************ Install step 'STC user' start *************************"
   stcUserCmd1="sh $BASEDIR/zowe-xmem-check-user.sh ${saf} ${XMEM_STC_USER}"
-  stcUserCmd2="sh $BASEDIR/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID}"
+  stcUserCmd2="sh $BASEDIR/zowe-xmem-define-stc-user.sh ${saf} ${XMEM_STC_USER} ${XMEM_STC_USER_UID} ${XMEM_STC_GROUP}"
   $stcUserCmd1
   rc=$?
   if [[ $rc -eq 1 ]]; then
@@ -163,7 +164,7 @@ if $safOk ; then
   echo
   echo "************************ Install step 'STC profile' start **********************"
   stcProfileCmd1="sh $BASEDIR/zowe-xmem-check-stc-profile.sh ${saf} ${XMEM_STC_PREFIX}"
-  stcProfileCmd2="sh $BASEDIR/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER}"
+  stcProfileCmd2="sh $BASEDIR/zowe-xmem-define-stc-profile.sh ${saf} ${XMEM_STC_PREFIX} ${XMEM_STC_USER} ${XMEM_STC_GROUP}"
   $stcProfileCmd1
   rc=$?
   if [[ $rc -eq 1 ]]; then

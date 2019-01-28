@@ -12,15 +12,16 @@ BASEDIR=$(dirname "$0")
 saf=$1
 stcPrefix=$2
 stcUser=$3
+stcGroup=$4
 
 rc=8
 
-echo "Define STC prefix ${stcPrefix} with STC user ${stcUser} (SAF=${saf})"
+echo "Define STC prefix ${stcPrefix} with STC user ${stcUser} and GROUP=${stcGroup} (SAF=${saf})"
 
 case $saf in
 
 RACF) 
-  tsocmd "RDEFINE STARTED ${stcPrefix}*.* UACC(NONE) STDATA(USER(${stcUser}) GROUP(STCGROUP))" \
+  tsocmd "RDEFINE STARTED ${stcPrefix}*.* UACC(NONE) STDATA(USER(${stcUser}) GROUP(${stcGroup}))" \
     1> /tmp/cmd.out 2> /tmp/cmd.err 
   if [[ $? -ne 0 ]]
   then
@@ -44,7 +45,7 @@ ACF2)
     cat /tmp/cmd.out /tmp/cmd.err
     rc=8
   else
-    tsocmd "INSERT STC.${stcPrefix}***** LOGONID(${stcUser}) GROUP(STCGROUP) STCID(${stcPrefix}*****)" \
+    tsocmd "INSERT STC.${stcPrefix}***** LOGONID(${stcUser}) GROUP(${stcGroup}) STCID(${stcPrefix}*****)" \
       1> /tmp/cmd.out 2> /tmp/cmd.err 
     if [[ $? -ne 0 ]]
     then

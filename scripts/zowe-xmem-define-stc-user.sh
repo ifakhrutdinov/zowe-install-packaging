@@ -12,15 +12,16 @@ BASEDIR=$(dirname "$0")
 saf=$1
 stcUser=$2
 uid=$3
+stcGroup=$4
 
 rc=8
 
-echo "Define STC user ${stcUser} with UID=${uid} (SAF=${saf})"
+echo "Define STC user ${stcUser} with UID=${uid} and GROUP=${stcGroup} (SAF=${saf})"
 
 case $saf in
 
 RACF)
-  tsocmd "ADDUSER ${stcUser} DFLTGRP(STCGROUP) OMVS(UID(${uid})) AUTHORITY(USE)" \
+  tsocmd "ADDUSER ${stcUser} DFLTGRP(${stcGroup}) OMVS(UID(${uid})) AUTHORITY(USE)" \
     1>/tmp/cmd.out 2>/tmp/cmd.err
   if [[ $? -eq 0 ]]
   then
@@ -34,7 +35,7 @@ RACF)
   ;;
 
 ACF2)
-  tsocmd "INSERT ${stcUser} GROUP(STCGROUP) SET PROFILE(USER) DIV(OMVS) INSERT ${stcUser} UID(${stcUser})" \
+  tsocmd "INSERT ${stcUser} GROUP(${stcGroup}) SET PROFILE(USER) DIV(OMVS) INSERT ${stcUser} UID(${stcUser})" \
     1>/tmp/cmd.out 2>/tmp/cmd.err
   if [[ $? -eq 0 ]]
   then
@@ -67,7 +68,7 @@ ACF2)
   ;;
 
 TSS)
-  tsocmd "TSS ADD(${stcUser}) OMVSGRP(STCGROUP) UID(${uid})" \
+  tsocmd "TSS ADD(${stcUser}) OMVSGRP(${stcGroup}) UID(${uid})" \
     1>/tmp/cmd.out 2>/tmp/cmd.err
   if [[ $? -eq 0 ]]
   then
